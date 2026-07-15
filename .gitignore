@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.pyc
+*-env/
+*.egg-info/
+
+# Virtual environments
+sensor-env/
+fog-env/
+
+# Local runtime artifacts - NOT source code, regenerated on every run
+fog_outbox.db
+*.db
+
+# Test/scratch configs created during debugging
+config_test*.json
+config_anomaly_test.json
+config_retry_test.json
+config_heartbeat_test.json
+
+# AWS credentials/certs (once you get to IoT Core - NEVER commit these)
+certs/
+*.pem
+*.crt
+*.key
+
+# OS junk
+.DS_Store

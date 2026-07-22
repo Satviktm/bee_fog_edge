@@ -1,0 +1,1033 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Apiary Monitor — Live Hive Telemetry</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,560;0,9..144,680;1,9..144,500&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+    <style>
+      :root {
+        --bg-void: #14110b;
+        --bg-panel: #1c1710;
+        --bg-raised: #241d14;
+        --honey: #e8a33d;
+        --honey-bright: #f4c15c;
+        --ink: #f2e9d8;
+        --ink-dim: #9c8e76;
+        --ink-faint: #5f5644;
+        --alert: #d2634a;
+        --warn: #d6a63c;
+        --ok: #7e9b63;
+        --line: #332a1b;
+        --radius: 3px;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      html {
+        -webkit-font-smoothing: antialiased;
+      }
+
+      body {
+        background: var(--bg-void);
+        color: var(--ink);
+        font-family: "Inter", sans-serif;
+        min-height: 100vh;
+        background-image:
+          radial-gradient(
+            circle at 12% 8%,
+            rgba(232, 163, 61, 0.05),
+            transparent 40%
+          ),
+          radial-gradient(
+            circle at 88% 92%,
+            rgba(232, 163, 61, 0.035),
+            transparent 45%
+          );
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        * {
+          animation-duration: 0.01ms !important;
+          transition-duration: 0.01ms !important;
+        }
+      }
+
+      a,
+      button {
+        font: inherit;
+        color: inherit;
+      }
+
+      :focus-visible {
+        outline: 2px solid var(--honey-bright);
+        outline-offset: 2px;
+        border-radius: 2px;
+      }
+
+      /* ---------- layout shell ---------- */
+      .shell {
+        max-width: 1180px;
+        margin: 0 auto;
+        padding: 32px 24px 80px;
+      }
+
+      /* ---------- header ---------- */
+      header {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 20px;
+        padding-bottom: 28px;
+        border-bottom: 1px solid var(--line);
+        margin-bottom: 36px;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+      }
+
+      .brand svg {
+        width: 34px;
+        height: 34px;
+        flex-shrink: 0;
+      }
+
+      .brand-text .eyebrow {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 11px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--honey);
+        margin-bottom: 4px;
+      }
+
+      .brand-text h1 {
+        font-family: "Fraunces", serif;
+        font-weight: 560;
+        font-size: 30px;
+        letter-spacing: -0.01em;
+      }
+
+      .status-block {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 6px;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 12px;
+        color: var(--ink-dim);
+      }
+
+      .status-pill {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 5px 12px;
+        border: 1px solid var(--line);
+        border-radius: 20px;
+        background: var(--bg-panel);
+      }
+
+      .dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: var(--ok);
+        box-shadow: 0 0 0 3px rgba(126, 155, 99, 0.18);
+      }
+
+      .dot.warn {
+        background: var(--warn);
+        box-shadow: 0 0 0 3px rgba(214, 166, 60, 0.18);
+      }
+      .dot.down {
+        background: var(--alert);
+        box-shadow: 0 0 0 3px rgba(210, 99, 74, 0.18);
+        animation: pulse 1.4s infinite;
+      }
+
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.35;
+        }
+      }
+
+      .status-pill span {
+        font-size: 11px;
+        letter-spacing: 0.03em;
+      }
+
+      /* ---------- connection banner ---------- */
+      .banner {
+        display: none;
+        align-items: center;
+        gap: 10px;
+        background: rgba(210, 99, 74, 0.1);
+        border: 1px solid rgba(210, 99, 74, 0.35);
+        color: #e8b4a4;
+        padding: 11px 16px;
+        border-radius: var(--radius);
+        font-size: 13px;
+        margin-bottom: 28px;
+        font-family: "JetBrains Mono", monospace;
+      }
+      .banner.show {
+        display: flex;
+      }
+
+      /* ---------- section labels ---------- */
+      .section-label {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 11px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--ink-faint);
+        margin-bottom: 16px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .section-label::after {
+        content: "";
+        flex: 1;
+        height: 1px;
+        background: var(--line);
+      }
+
+      /* ---------- honeycomb hive selector ---------- */
+      .comb {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 14px 10px;
+        margin-bottom: 44px;
+      }
+
+      .cell {
+        position: relative;
+        width: 172px;
+        height: 150px;
+        clip-path: polygon(
+          50% 0%,
+          100% 25%,
+          100% 75%,
+          50% 100%,
+          0% 75%,
+          0% 25%
+        );
+        background: var(--bg-panel);
+        border: none;
+        cursor: pointer;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        padding: 20px 24px;
+        transition:
+          background 0.18s ease,
+          transform 0.18s ease;
+        text-align: center;
+      }
+
+      .cell:hover {
+        background: var(--bg-raised);
+        transform: translateY(-2px);
+      }
+
+      .cell.active {
+        background: linear-gradient(
+          160deg,
+          rgba(232, 163, 61, 0.16),
+          var(--bg-raised)
+        );
+      }
+
+      .cell.active::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        clip-path: polygon(
+          50% 0%,
+          100% 25%,
+          100% 75%,
+          50% 100%,
+          0% 75%,
+          0% 25%
+        );
+        box-shadow: inset 0 0 0 1.5px var(--honey);
+        pointer-events: none;
+      }
+
+      .cell .cell-id {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 11px;
+        letter-spacing: 0.06em;
+        color: var(--ink-dim);
+      }
+
+      .cell .cell-value {
+        font-family: "Fraunces", serif;
+        font-weight: 560;
+        font-size: 26px;
+        color: var(--ink);
+        line-height: 1;
+      }
+
+      .cell .cell-meta {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 10px;
+        color: var(--ink-faint);
+      }
+
+      .cell .cell-dot {
+        position: absolute;
+        top: 38px;
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--ok);
+      }
+      .cell .cell-dot.warn {
+        background: var(--warn);
+      }
+      .cell .cell-dot.down {
+        background: var(--ink-faint);
+      }
+
+      .empty-note {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 12px;
+        color: var(--ink-faint);
+        padding: 20px 0;
+      }
+
+      /* ---------- charts ---------- */
+      .panels {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 18px;
+        margin-bottom: 36px;
+      }
+
+      .ambient-strip {
+        display: flex;
+        gap: 14px;
+        flex-wrap: wrap;
+        margin-bottom: 44px;
+      }
+
+      .ambient-card {
+        flex: 1;
+        min-width: 150px;
+        background: var(--bg-panel);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        padding: 16px 20px;
+      }
+
+      .ambient-card .a-label {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 10px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--ink-faint);
+        margin-bottom: 6px;
+      }
+
+      .ambient-card .a-value {
+        font-family: "Fraunces", serif;
+        font-weight: 560;
+        font-size: 22px;
+        color: var(--ink-dim);
+      }
+
+      .ambient-card .a-value span {
+        font-family: "Inter", sans-serif;
+        font-size: 12px;
+        color: var(--ink-faint);
+        font-weight: 400;
+      }
+
+      .panel {
+        background: var(--bg-panel);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        padding: 22px 22px 16px;
+      }
+
+      .panel h3 {
+        font-family: "Fraunces", serif;
+        font-weight: 500;
+        font-style: italic;
+        font-size: 16px;
+        color: var(--ink);
+        margin-bottom: 2px;
+      }
+
+      .panel .panel-sub {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 10.5px;
+        color: var(--ink-faint);
+        margin-bottom: 14px;
+      }
+
+      .panel canvas {
+        max-height: 190px;
+      }
+
+      /* ---------- alerts ---------- */
+      .alerts {
+        display: flex;
+        flex-direction: column;
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        overflow: hidden;
+      }
+
+      .alert-row {
+        display: grid;
+        grid-template-columns: 14px 1fr auto auto;
+        align-items: center;
+        gap: 14px;
+        padding: 13px 18px;
+        border-bottom: 1px solid var(--line);
+        background: var(--bg-panel);
+      }
+      .alert-row:last-child {
+        border-bottom: none;
+      }
+
+      .alert-marker {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--alert);
+      }
+      .alert-marker.system {
+        background: var(--ink-faint);
+      }
+
+      .alert-label {
+        font-family: "Inter", sans-serif;
+        font-size: 13px;
+        font-weight: 500;
+      }
+      .alert-label .field {
+        color: var(--ink-dim);
+        font-weight: 400;
+        font-size: 12px;
+      }
+
+      .alert-hive {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 11px;
+        color: var(--honey);
+        background: rgba(232, 163, 61, 0.08);
+        padding: 3px 9px;
+        border-radius: 20px;
+      }
+
+      .alert-time {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 11px;
+        color: var(--ink-faint);
+        white-space: nowrap;
+      }
+
+      footer {
+        margin-top: 60px;
+        padding-top: 20px;
+        border-top: 1px solid var(--line);
+        font-family: "JetBrains Mono", monospace;
+        font-size: 10.5px;
+        color: var(--ink-faint);
+        display: flex;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      @media (max-width: 760px) {
+        .panels {
+          grid-template-columns: 1fr;
+        }
+        header {
+          align-items: flex-start;
+        }
+        .status-block {
+          align-items: flex-start;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <header>
+        <div class="brand">
+          <svg
+            viewBox="0 0 40 40"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <polygon
+              points="20,2 36,11 36,29 20,38 4,29 4,11"
+              fill="none"
+              stroke="#E8A33D"
+              stroke-width="1.6"
+            />
+            <polygon
+              points="20,12 28,16.5 28,25.5 20,30 12,25.5 12,16.5"
+              fill="#E8A33D"
+              opacity="0.85"
+            />
+          </svg>
+          <div class="brand-text">
+            <div class="eyebrow">Precision Apiary Monitoring</div>
+            <h1 id="apiary-title">Apiary&nbsp;—</h1>
+          </div>
+        </div>
+        <div class="status-block">
+          <div class="status-pill">
+            <span class="dot" id="conn-dot"></span>
+            <span id="conn-label">Connecting</span>
+          </div>
+          <span id="clock">—</span>
+        </div>
+      </header>
+
+      <div class="banner" id="banner">
+        <span>⚠</span>
+        <span id="banner-text"
+          >Connection to apiary backend lost — retrying every 30s</span
+        >
+      </div>
+
+      <div class="section-label">Hives</div>
+      <div class="comb" id="hive-comb">
+        <div class="empty-note">Loading hive registry…</div>
+      </div>
+
+      <div class="section-label" id="detail-label">Selected hive</div>
+      <div class="panels">
+        <div class="panel">
+          <h3>Hive weight</h3>
+          <div class="panel-sub">kg · last 2 hours</div>
+          <canvas id="chart-weight"></canvas>
+        </div>
+        <div class="panel">
+          <h3>Acoustic signature</h3>
+          <div class="panel-sub">dominant frequency, Hz · last 2 hours</div>
+          <canvas id="chart-acoustic"></canvas>
+        </div>
+        <div class="panel">
+          <h3>Internal temperature</h3>
+          <div class="panel-sub">°C · brood-nest sensor · last 2 hours</div>
+          <canvas id="chart-temp"></canvas>
+        </div>
+        <div class="panel">
+          <h3>Internal humidity</h3>
+          <div class="panel-sub">%RH · last 2 hours</div>
+          <canvas id="chart-humidity"></canvas>
+        </div>
+      </div>
+
+      <div class="section-label">
+        Ambient conditions
+        <span
+          style="
+            font-style: italic;
+            text-transform: none;
+            letter-spacing: 0;
+            color: var(--ink-faint);
+            font-family: &quot;Inter&quot;, sans-serif;
+          "
+          >— context only, not a colony health signal</span
+        >
+      </div>
+      <div class="ambient-strip" id="ambient-strip">
+        <div class="empty-note">No recent ambient reading.</div>
+      </div>
+
+      <div class="section-label">Colony health alerts</div>
+      <div class="alerts" id="alerts-colony">
+        <div class="empty-note" style="padding-left: 18px">
+          Loading alert log…
+        </div>
+      </div>
+
+      <div class="section-label" style="margin-top: 22px">
+        System health
+        <span
+          style="
+            font-style: italic;
+            text-transform: none;
+            letter-spacing: 0;
+            color: var(--ink-faint);
+            font-family: &quot;Inter&quot;, sans-serif;
+          "
+          >— sensor faults &amp; offline devices, detected by the fog node</span
+        >
+      </div>
+      <div class="alerts" id="alerts-system">
+        <div class="empty-note" style="padding-left: 18px">
+          Loading system log…
+        </div>
+      </div>
+
+      <footer>
+        <span id="provenance">Data relayed via fog node · —</span>
+        <span>Fog &amp; Edge Computing — H9FECC</span>
+      </footer>
+    </div>
+
+    <script>
+      const API_URL = "https://202pgbz8y9.execute-api.us-east-1.amazonaws.com";
+      const POLL_INTERVAL_MS = 30000;
+      const HISTORY_MINUTES = 120;
+
+      // ------------------------------------------------------------
+      let state = {
+        apiaryId: null,
+        hives: [],
+        selectedHive: null,
+        connected: false,
+        lastSyncTs: null,
+      };
+
+      let weightChart, acousticChart, tempChart, humidityChart;
+
+      function localHHMM(v) {
+        const d = new Date(v);
+        return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+      }
+
+      function fmtTimeAgo(isoOrEpochMs, isEpoch) {
+        const then = isEpoch
+          ? Number(isoOrEpochMs)
+          : new Date(isoOrEpochMs).getTime();
+        const diffSec = Math.max(0, Math.round((Date.now() - then) / 1000));
+        if (diffSec < 60) return `${diffSec}s ago`;
+        if (diffSec < 3600) return `${Math.round(diffSec / 60)}m ago`;
+        return `${Math.round(diffSec / 3600)}h ago`;
+      }
+
+      function fmtClock() {
+        const d = new Date();
+        return (
+          d.toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+          }) + " local"
+        );
+      }
+
+      async function getJSON(path) {
+        const res = await fetch(`${API_URL}${path}`);
+        if (!res.ok) throw new Error(`${path} -> HTTP ${res.status}`);
+        return res.json();
+      }
+
+      function setConnection(ok, label) {
+        state.connected = ok;
+        const dot = document.getElementById("conn-dot");
+        const lbl = document.getElementById("conn-label");
+        const banner = document.getElementById("banner");
+        dot.className = "dot" + (ok ? "" : " down");
+        lbl.textContent = label || (ok ? "Live" : "Offline");
+        banner.classList.toggle("show", !ok);
+      }
+
+      // ---------- rendering ----------
+
+      function renderHiveComb() {
+        const comb = document.getElementById("hive-comb");
+        if (!state.hives.length) {
+          comb.innerHTML = `<div class="empty-note">No hives registered for this apiary yet.</div>`;
+          return;
+        }
+
+        comb.innerHTML = "";
+        state.hives.forEach((hive) => {
+          const reading = hive.latest_reading;
+          const cell = document.createElement("button");
+          cell.className =
+            "cell" + (hive.hive_id === state.selectedHive ? " active" : "");
+          cell.setAttribute(
+            "aria-pressed",
+            hive.hive_id === state.selectedHive,
+          );
+
+          let valueText = "—";
+          let metaText = "No data received";
+          let dotClass = "down";
+
+          if (reading) {
+            const key = Object.keys(reading.readings)[0];
+            const val = reading.readings[key];
+            valueText =
+              typeof val === "number"
+                ? val.toFixed(key === "value" ? 1 : 0)
+                : val;
+            const unit =
+              key === "value" ? "kg" : key === "dominant_freq_hz" ? "Hz" : "";
+            metaText = `${reading.sensor_type} · ${fmtTimeAgo(reading.ts, true)}`;
+            const ageMin = (Date.now() - reading.ts) / 60000;
+            dotClass = ageMin < 10 ? "" : ageMin < 30 ? "warn" : "down";
+            valueText += unit ? ` ${unit}` : "";
+          }
+
+          cell.innerHTML = `
+      <span class="cell-dot ${dotClass}"></span>
+      <span class="cell-id">${hive.hive_id}</span>
+      <span class="cell-value">${valueText}</span>
+      <span class="cell-meta">${metaText}</span>
+    `;
+          cell.addEventListener("click", () => selectHive(hive.hive_id));
+          comb.appendChild(cell);
+        });
+      }
+
+      function initCharts() {
+        const commonOpts = {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: { duration: 400 },
+          plugins: { legend: { display: false } },
+          scales: {
+            x: {
+              ticks: {
+                color: "#5F5644",
+                font: { family: "'JetBrains Mono'", size: 9 },
+              },
+              grid: { color: "#241D14" },
+            },
+            y: {
+              ticks: {
+                color: "#5F5644",
+                font: { family: "'JetBrains Mono'", size: 9 },
+              },
+              grid: { color: "#241D14" },
+            },
+          },
+        };
+
+        weightChart = new Chart(document.getElementById("chart-weight"), {
+          type: "line",
+          data: {
+            datasets: [
+              {
+                data: [],
+                borderColor: "#E8A33D",
+                backgroundColor: "rgba(232,163,61,0.08)",
+                borderWidth: 2,
+                pointRadius: 2,
+                pointHoverRadius: 4,
+                fill: true,
+                tension: 0.25,
+              },
+            ],
+          },
+          options: {
+            ...commonOpts,
+            scales: {
+              ...commonOpts.scales,
+              x: {
+                ...commonOpts.scales.x,
+                type: "linear",
+                ticks: { ...commonOpts.scales.x.ticks, callback: localHHMM },
+              },
+            },
+          },
+        });
+
+        acousticChart = new Chart(document.getElementById("chart-acoustic"), {
+          type: "line",
+          data: {
+            datasets: [
+              {
+                data: [],
+                borderColor: "#7E9B63",
+                backgroundColor: "rgba(126,155,99,0.08)",
+                borderWidth: 2,
+                pointRadius: 2,
+                pointHoverRadius: 4,
+                fill: true,
+                tension: 0.25,
+              },
+            ],
+          },
+          options: {
+            ...commonOpts,
+            scales: {
+              ...commonOpts.scales,
+              x: {
+                ...commonOpts.scales.x,
+                type: "linear",
+                ticks: { ...commonOpts.scales.x.ticks, callback: localHHMM },
+              },
+            },
+          },
+        });
+
+        tempChart = new Chart(document.getElementById("chart-temp"), {
+          type: "line",
+          data: {
+            datasets: [
+              {
+                data: [],
+                borderColor: "#D2634A",
+                backgroundColor: "rgba(210,99,74,0.08)",
+                borderWidth: 2,
+                pointRadius: 2,
+                pointHoverRadius: 4,
+                fill: true,
+                tension: 0.25,
+              },
+            ],
+          },
+          options: {
+            ...commonOpts,
+            scales: {
+              ...commonOpts.scales,
+              x: {
+                ...commonOpts.scales.x,
+                type: "linear",
+                ticks: { ...commonOpts.scales.x.ticks, callback: localHHMM },
+              },
+            },
+          },
+        });
+
+        humidityChart = new Chart(document.getElementById("chart-humidity"), {
+          type: "line",
+          data: {
+            datasets: [
+              {
+                data: [],
+                borderColor: "#4A90A8",
+                backgroundColor: "rgba(74,144,168,0.08)",
+                borderWidth: 2,
+                pointRadius: 2,
+                pointHoverRadius: 4,
+                fill: true,
+                tension: 0.25,
+              },
+            ],
+          },
+          options: {
+            ...commonOpts,
+            scales: {
+              ...commonOpts.scales,
+              x: {
+                ...commonOpts.scales.x,
+                type: "linear",
+                ticks: { ...commonOpts.scales.x.ticks, callback: localHHMM },
+              },
+            },
+          },
+        });
+      }
+
+      function renderCharts(history) {
+        const seriesFor = (sensorType, field) =>
+          history
+            .filter((h) => h.sensor_type === sensorType)
+            .map((h) => ({ x: h.ts, y: h.readings[field] }))
+            .sort((a, b) => a.x - b.x);
+
+        weightChart.data.datasets[0].data = seriesFor("weight", "value");
+        weightChart.update("none");
+
+        acousticChart.data.datasets[0].data = seriesFor(
+          "acoustic",
+          "dominant_freq_hz",
+        );
+        acousticChart.update("none");
+
+        tempChart.data.datasets[0].data = seriesFor("internal_temp", "value");
+        tempChart.update("none");
+
+        humidityChart.data.datasets[0].data = seriesFor(
+          "internal_humidity",
+          "value",
+        );
+        humidityChart.update("none");
+
+        renderAmbientStrip(history);
+      }
+
+      function renderAmbientStrip(history) {
+        const strip = document.getElementById("ambient-strip");
+        const ambientReadings = history.filter(
+          (h) => h.sensor_type === "external_ambient",
+        );
+        if (!ambientReadings.length) {
+          strip.innerHTML = `<div class="empty-note">No recent ambient reading in this window.</div>`;
+          return;
+        }
+        const latest = ambientReadings.sort((a, b) => b.ts - a.ts)[0];
+        const r = latest.readings;
+        const cards = [
+          ["Outdoor temp", r.temperature_c, "°C"],
+          ["Outdoor humidity", r.humidity_pct, "%"],
+          ["Light level", r.light_lux, "lux"],
+        ];
+        strip.innerHTML =
+          cards
+            .map(
+              ([label, val, unit]) => `
+    <div class="ambient-card">
+      <div class="a-label">${label}</div>
+      <div class="a-value">${typeof val === "number" ? val.toFixed(unit === "lux" ? 0 : 1) : "—"} <span>${unit}</span></div>
+    </div>
+  `,
+            )
+            .join("") +
+          `<div class="ambient-card" style="flex:0 0 auto; min-width:auto;"><div class="a-label">As of</div><div class="a-value" style="font-size:14px; font-family:'JetBrains Mono',monospace; color:var(--ink-faint);">${fmtTimeAgo(latest.ts, true)}</div></div>`;
+      }
+
+      function renderAlertList(containerId, alerts, emptyText) {
+        const list = document.getElementById(containerId);
+        if (!alerts.length) {
+          list.innerHTML = `<div class="empty-note" style="padding-left:18px;">${emptyText}</div>`;
+          return;
+        }
+        list.innerHTML = alerts
+          .map((a) => {
+            const isSystem = (a.label || "").startsWith("sensor_");
+            let fieldText = "";
+            if (a.field) {
+              const hasBaseline =
+                a.baseline_mean != null &&
+                a.value != null &&
+                a.baseline_mean !== 0;
+              if (hasBaseline) {
+                const pct =
+                  ((a.value - a.baseline_mean) / a.baseline_mean) * 100;
+                const sign = pct > 0 ? "+" : "";
+                fieldText = `<span class="field"> · ${a.field} = ${a.value} <span style="color:var(--ink-faint);">(baseline ~${a.baseline_mean.toFixed(1)}, ${sign}${pct.toFixed(0)}%)</span></span>`;
+              } else {
+                fieldText = `<span class="field"> · ${a.field}${a.value != null ? " = " + a.value : ""}</span>`;
+              }
+            }
+            return `
+      <div class="alert-row">
+        <span class="alert-marker ${isSystem ? "system" : ""}"></span>
+        <span class="alert-label">${a.label}${fieldText}</span>
+        <span class="alert-hive">${a.hive_id}</span>
+        <span class="alert-time">${fmtTimeAgo(a.event_timestamp || a.detected_at)}</span>
+      </div>
+    `;
+          })
+          .join("");
+      }
+
+      function renderAlerts(alerts) {
+        const colony = alerts.filter(
+          (a) => !(a.label || "").startsWith("sensor_"),
+        );
+        const system = alerts.filter((a) =>
+          (a.label || "").startsWith("sensor_"),
+        );
+        renderAlertList(
+          "alerts-colony",
+          colony,
+          "No colony alerts. All hives quiet.",
+        );
+        renderAlertList(
+          "alerts-system",
+          system,
+          "No system faults detected. All sensors reporting normally.",
+        );
+      }
+
+      // ---------- data flow ----------
+
+      async function selectHive(hiveId) {
+        state.selectedHive = hiveId;
+        document.getElementById("detail-label").textContent =
+          `Selected hive — ${hiveId}`;
+        renderHiveComb();
+        try {
+          const data = await getJSON(
+            `/hive/${hiveId}/history?minutes=${HISTORY_MINUTES}`,
+          );
+          renderCharts(data.history || []);
+        } catch (e) {
+          console.error("history fetch failed", e);
+        }
+      }
+
+      async function refreshAll() {
+        try {
+          const apiaries = await getJSON("/apiaries");
+          const apiary = apiaries.apiaries[0];
+          state.apiaryId = apiary.apiary_id;
+          document.getElementById("apiary-title").textContent =
+            `Apiary — ${apiary.apiary_id}`;
+
+          const hivesResp = await getJSON(`/apiary/${apiary.apiary_id}/hives`);
+          state.hives = hivesResp.hives || [];
+          if (!state.selectedHive && state.hives.length) {
+            state.selectedHive = state.hives[0].hive_id;
+            document.getElementById("detail-label").textContent =
+              `Selected hive — ${state.selectedHive}`;
+          }
+          renderHiveComb();
+
+          if (state.selectedHive) {
+            const historyResp = await getJSON(
+              `/hive/${state.selectedHive}/history?minutes=${HISTORY_MINUTES}`,
+            );
+            renderCharts(historyResp.history || []);
+          }
+
+          const alertsResp = await getJSON("/alerts/recent?limit=20");
+          renderAlerts(alertsResp.alerts || []);
+
+          state.lastSyncTs = Date.now();
+          setConnection(true, "Live");
+        } catch (e) {
+          console.error("refresh failed", e);
+          setConnection(false, "Offline");
+        }
+      }
+
+      function tickClock() {
+        document.getElementById("clock").textContent = fmtClock();
+        const prov = document.getElementById("provenance");
+        if (state.apiaryId && state.lastSyncTs) {
+          prov.textContent = `Data relayed via fog node · ${state.apiaryId} · last sync ${fmtTimeAgo(state.lastSyncTs, true)}`;
+        } else {
+          prov.textContent = "Data relayed via fog node · awaiting first sync…";
+        }
+      }
+
+      // ---------- boot ----------
+      initCharts();
+      tickClock();
+      setInterval(tickClock, 1000);
+      refreshAll();
+      setInterval(refreshAll, POLL_INTERVAL_MS);
+    </script>
+  </body>
+</html>

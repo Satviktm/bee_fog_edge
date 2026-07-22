@@ -2,21 +2,16 @@
   "mqtt_broker_host": "localhost",
   "mqtt_broker_port": 1883,
   "subscribe_topic": "apiary/+/hive/+/#",
-
   "batch_size": 5,
   "heartbeat_check_interval_sec": 30,
   "heartbeat_timeout_factor": 3,
-
   "outbox_db_path": "fog_outbox.db",
   "outbox_max_age_hours": 24,
   "outbox_purge_check_interval_sec": 300,
-
   "dispatch_interval_sec": 5,
   "retry_backoff_base_sec": 5,
   "retry_backoff_max_sec": 300,
-
-  "uploader": "mock",
-
+  "uploader": "iot_core",
   "expected_sensor_intervals_sec": {
     "weight": 60,
     "internal_temp": 300,
@@ -24,32 +19,108 @@
     "acoustic": 30,
     "external_ambient": 300
   },
-
   "range_filters": {
-    "weight":            { "value":            { "min": 0,   "max": 120 } },
-    "internal_temp":     { "value":            { "min": -20, "max": 60  } },
-    "internal_humidity": { "value":            { "min": 0,   "max": 100 } },
-    "acoustic":          { "dominant_freq_hz": { "min": 0,   "max": 2000 },
-                            "rms_amplitude":    { "min": 0,   "max": 5    } },
-    "external_ambient":  { "temperature_c":    { "min": -30, "max": 55  },
-                            "humidity_pct":     { "min": 0,   "max": 100 },
-                            "light_lux":        { "min": 0,   "max": 130000 } }
+    "weight": {
+      "value": {
+        "min": 0,
+        "max": 120
+      }
+    },
+    "internal_temp": {
+      "value": {
+        "min": -20,
+        "max": 60
+      }
+    },
+    "internal_humidity": {
+      "value": {
+        "min": 0,
+        "max": 100
+      }
+    },
+    "acoustic": {
+      "dominant_freq_hz": {
+        "min": 0,
+        "max": 2000
+      },
+      "rms_amplitude": {
+        "min": 0,
+        "max": 5
+      }
+    },
+    "external_ambient": {
+      "temperature_c": {
+        "min": -30,
+        "max": 55
+      },
+      "humidity_pct": {
+        "min": 0,
+        "max": 100
+      },
+      "light_lux": {
+        "min": 0,
+        "max": 130000
+      }
+    }
   },
-
   "rate_of_change_filters": {
-    "weight":            { "value":            5   },
-    "internal_temp":     { "value":            2   },
-    "internal_humidity": { "value":            10  },
-    "acoustic":          { "dominant_freq_hz": 100, "rms_amplitude": 2 },
-    "external_ambient":  { "temperature_c":    3,   "humidity_pct": 15, "light_lux": 50000 }
+    "weight": {
+      "value": 5
+    },
+    "internal_temp": {
+      "value": 2
+    },
+    "internal_humidity": {
+      "value": 10
+    },
+    "acoustic": {
+      "dominant_freq_hz": 100,
+      "rms_amplitude": 2
+    },
+    "external_ambient": {
+      "temperature_c": 3,
+      "humidity_pct": 15,
+      "light_lux": 50000
+    }
   },
-
   "stuck_at_repeat_threshold": 5,
-
   "anomaly_rules": {
-    "weight":            { "value":            { "direction": "drop", "fraction_threshold": 0.10, "baseline_window": 4, "label": "possible_swarm" } },
-    "internal_temp":     { "value":            { "direction": "drop", "fraction_threshold": 0.12, "baseline_window": 4, "label": "possible_colony_failure" } },
-    "internal_humidity": { "value":            { "direction": "rise", "fraction_threshold": 0.25, "baseline_window": 4, "label": "possible_mould_risk" } },
-    "acoustic":          { "dominant_freq_hz": { "direction": "drop", "fraction_threshold": 0.20, "baseline_window": 4, "label": "possible_queenless" } }
+    "weight": {
+      "value": {
+        "direction": "drop",
+        "fraction_threshold": 0.1,
+        "baseline_window": 4,
+        "label": "possible_swarm"
+      }
+    },
+    "internal_temp": {
+      "value": {
+        "direction": "drop",
+        "fraction_threshold": 0.12,
+        "baseline_window": 4,
+        "label": "possible_colony_failure"
+      }
+    },
+    "internal_humidity": {
+      "value": {
+        "direction": "rise",
+        "fraction_threshold": 0.25,
+        "baseline_window": 4,
+        "label": "possible_mould_risk"
+      }
+    },
+    "acoustic": {
+      "dominant_freq_hz": {
+        "direction": "drop",
+        "fraction_threshold": 0.2,
+        "baseline_window": 4,
+        "label": "possible_queenless"
+      }
+    }
+  },
+  "iot_core": {
+    "endpoint": "a1or11j3zzyigq-ats.iot.us-east-1.amazonaws.com",
+    "cert_dir": "certs",
+    "topic": "apiary/apiary-01/processed"
   }
 }

@@ -1,0 +1,146 @@
+{
+  "apiary_id": "apiary-01",
+  "hives": [
+    "hive-01",
+    "hive-02",
+    "hive-03"
+  ],
+  "mqtt_broker_host": "localhost",
+  "mqtt_broker_port": 1883,
+  "sensors": {
+    "weight": {
+      "interval_sec": 60,
+      "unit": "kg",
+      "fields": {
+        "value": {
+          "baseline_mean": 42.0,
+          "diurnal_amplitude": 3.0,
+          "diurnal_period_sec": 86400,
+          "noise_std": 0.15,
+          "anomaly": {
+            "enabled": true,
+            "probability_per_hour": 3000,
+            "magnitude_fraction": -0.22,
+            "persistent": true,
+            "label": "possible_swarm"
+          }
+        }
+      }
+    },
+    "internal_temp": {
+      "interval_sec": 300,
+      "unit": "C",
+      "fields": {
+        "value": {
+          "baseline_mean": 35.0,
+          "diurnal_amplitude": 0.8,
+          "diurnal_period_sec": 86400,
+          "noise_std": 0.25,
+          "anomaly": {
+            "enabled": true,
+            "probability_per_hour": 0.004,
+            "magnitude_fraction": -0.18,
+            "persistent": true,
+            "label": "possible_colony_failure"
+          }
+        }
+      }
+    },
+    "internal_humidity": {
+      "interval_sec": 300,
+      "unit": "%RH",
+      "fields": {
+        "value": {
+          "baseline_mean": 55.0,
+          "diurnal_amplitude": 4.0,
+          "diurnal_period_sec": 86400,
+          "noise_std": 1.0,
+          "anomaly": {
+            "enabled": true,
+            "probability_per_hour": 0.006,
+            "magnitude_fraction": 0.35,
+            "persistent": true,
+            "label": "possible_mould_risk"
+          }
+        }
+      }
+    },
+    "acoustic": {
+      "interval_sec": 30,
+      "unit": "mixed",
+      "fields": {
+        "dominant_freq_hz": {
+          "baseline_mean": 260.0,
+          "diurnal_amplitude": 10.0,
+          "diurnal_period_sec": 86400,
+          "noise_std": 4.0,
+          "anomaly": {
+            "enabled": true,
+            "probability_per_hour": 0.008,
+            "magnitude_fraction": -0.3,
+            "persistent": true,
+            "label": "possible_queenless"
+          }
+        },
+        "rms_amplitude": {
+          "baseline_mean": 0.45,
+          "diurnal_amplitude": 0.1,
+          "diurnal_period_sec": 86400,
+          "noise_std": 0.03,
+          "anomaly": {
+            "enabled": false,
+            "probability_per_hour": 0,
+            "magnitude_fraction": 0,
+            "persistent": false,
+            "label": "n/a"
+          }
+        }
+      }
+    },
+    "external_ambient": {
+      "interval_sec": 300,
+      "unit": "mixed",
+      "fields": {
+        "temperature_c": {
+          "baseline_mean": 18.0,
+          "diurnal_amplitude": 6.0,
+          "diurnal_period_sec": 86400,
+          "noise_std": 0.4,
+          "anomaly": {
+            "enabled": false,
+            "probability_per_hour": 0,
+            "magnitude_fraction": 0,
+            "persistent": false,
+            "label": "n/a"
+          }
+        },
+        "humidity_pct": {
+          "baseline_mean": 65.0,
+          "diurnal_amplitude": 10.0,
+          "diurnal_period_sec": 86400,
+          "noise_std": 1.5,
+          "anomaly": {
+            "enabled": false,
+            "probability_per_hour": 0,
+            "magnitude_fraction": 0,
+            "persistent": false,
+            "label": "n/a"
+          }
+        },
+        "light_lux": {
+          "baseline_mean": 8000.0,
+          "diurnal_amplitude": 7500.0,
+          "diurnal_period_sec": 86400,
+          "noise_std": 200.0,
+          "anomaly": {
+            "enabled": false,
+            "probability_per_hour": 0,
+            "magnitude_fraction": 0,
+            "persistent": false,
+            "label": "n/a"
+          }
+        }
+      }
+    }
+  }
+}

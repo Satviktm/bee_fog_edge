@@ -36,7 +36,7 @@ import paho.mqtt.client as mqtt
 from state import FogState
 from processing import filter_reading, check_anomaly
 from outbox import Outbox
-from uploader import MockUploader
+from uploader import MockUploader, IoTCoreUploader
 
 CONFIG_PATH = os.environ.get("CONFIG_PATH", os.path.join(os.path.dirname(__file__), "config.json"))
 stop_event = threading.Event()
@@ -53,12 +53,12 @@ def now_iso():
 
 # ------------------------------------------------------------- payload builders
 
-def build_alert_payload(hive_id, sensor_type, field_name, value, event_timestamp, label):
+def build_alert_payload(hive_id, sensor_type, field_name, value, event_timestamp, label, baseline_mean=None):
     """event_timestamp is the SENSOR's own timestamp (when the reading
     was actually taken) -- preserved even though this alert may not
     reach AWS until later, so history stays accurate regardless of
     delivery delay."""
-    return {
+    payload = {
         "kind": "alert",
         "hive_id": hive_id,
         "sensor_type": sensor_type,
@@ -68,6 +68,9 @@ def build_alert_payload(hive_id, sensor_type, field_name, value, event_timestamp
         "detected_at": now_iso(),
         "label": label,
     }
+    if baseline_mean is not None:
+        payload["baseline_mean"] = round(baseline_mean, 3)
+    return payload
 
 
 def build_batch_payload(hive_id, sensor_type, buffer):
@@ -150,9 +153,13 @@ class FogProcessor:
             if rule_cfg:
                 label = check_anomaly(value, field_state, rule_cfg)
                 if label:
-                    alert = build_alert_payload(hive_id, sensor_type, field_name, value, event_timestamp, label)
+                    baseline_mean = statistics.mean(field_state.baseline_values)
+                    alert = build_alert_payload(
+                        hive_id, sensor_type, field_name, value, event_timestamp, label,
+                        baseline_mean=baseline_mean,
+                    )
                     self.outbox.insert(alert, priority=1)
-                    print(f"[ANOMALY DETECTED] {hive_id}/{sensor_type}/{field_name}={value} -> {label}")
+                    print(f"[ANOMALY DETECTED] {hive_id}/{sensor_type}/{field_name}={value} -> {label} (baseline={baseline_mean:.2f})")
             field_state.baseline_values.append(value)
 
             valid_fields[field_name] = value
@@ -238,11 +245,15 @@ def main():
 
     if config["uploader"] == "mock":
         uploader = MockUploader(simulate_failure_rate=float(os.environ.get("SIMULATE_FAILURE_RATE", 0)))
-    else:
-        raise NotImplementedError(
-            "IoT Core uploader not wired up yet -- see uploader.py IoTCoreUploader "
-            "and fill in endpoint/cert paths once the AWS IoT Thing exists."
+    elif config["uploader"] == "iot_core":
+        iot_cfg = config["iot_core"]
+        uploader = IoTCoreUploader(
+            endpoint=iot_cfg["endpoint"],
+            cert_dir=iot_cfg["cert_dir"],
+            topic=iot_cfg["topic"],
         )
+    else:
+        raise NotImplementedError(f"Unknown uploader type: {config['uploader']}")
 
     processor = FogProcessor(config, outbox)
 
